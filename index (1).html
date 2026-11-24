@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quiz Héloïse &amp; Abélard — Salle de classe</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 18px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+    }
+    .row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s ease, opacity 0.15s ease;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { background: #6366f1; color: #fff; }
+    .btn-success { background: #10b981; color: #fff; }
+    .btn-warning { background: #f59e0b; color: #0f172a; }
+    .btn-secondary { background: #334155; color: #f8fafc; }
+    input[type="text"] {
+      background: #0f172a;
+      border: 1px solid #475569;
+      color: #f8fafc;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 16px;
+      width: 100%;
+    }
+    .pin-box {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: 6px;
+      color: #a5b4fc;
+      background: #0f172a;
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: 1px dashed #6366f1;
+      display: inline-block;
+    }
+    .options-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .option-btn {
+      text-align: left;
+      padding: 16px;
+      border-radius: 12px;
+      border: 2px solid #334155;
+      background: #0f172a;
+      color: #f8fafc;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .option-btn.selected {
+      border-color: #6366f1;
+      background: #312e81;
+    }
+    .option-btn.correct {
+      border-color: #10b981;
+      background: #064e3b;
+    }
+    .option-btn.wrong {
+      border-color: #ef4444;
+      background: #450a0a;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      background: #334155;
+      color: #e2e8f0;
+    }
+    .podium {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+    .podium-card {
+      background: #0f172a;
+      border: 1px solid #475569;
+      border-radius: 14px;
+      padding: 18px;
+      text-align: center;
+    }
+    .podium-card.first { border-color: #facc15; background: #422006; }
+    .podium-card.second { border-color: #cbd5e1; }
+    .podium-card.third { border-color: #d97706; }
+    .muted { color: #94a3b8; font-size: 14px; }
+    .qr-wrap {
+      background: #ffffff;
+      padding: 12px;
+      border-radius: 14px;
+      display: inline-block;
+    }
+    .leaderboard-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: #0f172a;
+      border-radius: 10px;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    const QUESTIONS = [
+      {
+        q: "Qui est la fondatrice d'Héloïse & Abélard ?",
+        options: ["Héloïse Schapiro", "Jeanne Lanvin", "Coco Chanel", "Elsa Schiaparelli"],
+        correct: 0,
+        time: 20
+      },
+      {
+        q: "Quel est le principe central de la marque ?",
+        options: ["Extraire toujours plus de diamants", "Recycler et transformer les matériaux", "Produire des bijoux fantaisie", "Importer des bijoux étrangers"],
+        correct: 1,
+        time: 20
+      },
+      {
+        q: "Quelle devise résume l'approche de la marque ?",
+        options: ["Le luxe pour tous", "L'élégance avant tout", "Transformer plutôt qu'extraire", "Créer pour impressionner"],
+        correct: 2,
+        time: 20
+      },
+      {
+        q: "Quel savoir-faire est mis en avant par la marque ?",
+        options: ["Une fabrication industrielle à grande échelle", "Un savoir-faire artisanal parisien", "Une production entièrement automatisée", "Une fabrication uniquement à l'étranger"],
+        correct: 1,
+        time: 20
+      },
+      {
+        q: "Quel délai de production est indiqué dans le dossier ?",
+        options: ["48 heures", "Une semaine", "Trois semaines", "Trois mois"],
+        correct: 2,
+        time: 20
+      },
+      {
+        q: "Quelle part du marché français en valeur représentent les distributeurs spécialisés ?",
+        options: ["30%", "50%", "Près de 70%", "90%"],
+        correct: 2,
+        time: 30
+      },
+      {
+        q: "Quel événement a fortement perturbé le marché en 2020 ?",
+        options: ["La crise sanitaire", "La disparition de l'or", "La fin du commerce en ligne", "La suppression des bijoux de luxe"],
+        correct: 0,
+        time: 20
+      },
+      {
+        q: "Que signifie le « green gap » ?",
+        options: ["Le manque de bijoux écologiques", "Le décalage entre intentions écologiques et achats réels", "La hausse du prix de l'or", "La disparition des commerces physiques"],
+        correct: 1,
+        time: 30
+      },
+      {
+        q: "Lequel de ces éléments peut servir à segmenter les consommateurs ?",
+        options: ["L'âge", "Le pouvoir d'achat", "Les valeurs personnelles", "Toutes ces réponses"],
+        correct: 3,
+        time: 20
+      },
+      {
+        q: "Quel est un intérêt des bijoux de seconde main ou recyclés ?",
+        options: ["Limiter le gaspillage de matières", "Supprimer le besoin de savoir-faire", "Rendre tous les bijoux gratuits", "Éviter toute personnalisation"],
+        correct: 0,
+        time: 20
+      },
+      {
+        q: "À quoi correspond la segmentation marketing ?",
+        options: ["Fixer les prix des produits", "Diviser un marché en groupes homogènes", "Faire uniquement de la publicité", "Choisir les fournisseurs"],
+        correct: 1,
+        time: 20
+      },
+      {
+        q: "Lequel est un critère de segmentation psychographique ?",
+        options: ["L'âge", "Le revenu", "Le style de vie", "Le pays"],
+        correct: 2,
+        time: 20
+      },
+      {
+        q: "Quel est le positionnement d'Héloïse & Abélard ?",
+        options: ["Bijouterie industrielle à bas prix", "Joaillerie éthique, romantique et circulaire", "Bijouterie fantaisie pour enfants", "Joaillerie traditionnelle de masse"],
+        correct: 1,
+        time: 30
+      },
+      {
+        q: "Que signifie USP en marketing ?",
+        options: ["Unique Selling Proposition", "Universal Sales Product", "User Strategic Position", "United Selling Price"],
+        correct: 0,
+        time: 20
+      },
+      {
+        q: "Quels sont les 4 éléments du marketing mix traditionnel ?",
+        options: ["Produit, Prix, Place, Promotion", "Produit, Public, Profit, Production", "Prix, Publicité, Personnel, Profit", "Produit, Positionnement, Profit, Public"],
+        correct: 0,
+        time: 20
+      },
+      {
+        q: "Quelles sont les trois dimensions du développement durable ?",
+        options: ["Marketing, production, finance", "Économique, sociale, environnementale", "Politique, commerciale, culturelle", "Sociale, technologique, financière"],
+        correct: 1,
+        time: 20
+      },
+      {
+        q: "Quelle fonction de la marque permet de donner confiance au consommateur ?",
+        options: ["Diriger", "Rassurer", "Produire", "Distribuer"],
+        correct: 1,
+        time: 20
+      },
+      {
+        q: "Qu'est-ce que l'upcycling ?",
+        options: ["Détruire des produits anciens", "Transformer des matériaux usagés en nouveaux produits de valeur", "Produire uniquement des bijoux neufs", "Importer des matières premières"],
+        correct: 1,
+        time: 30
+      },
+      {
+        q: "Quel outil analyse le macro-environnement d'une entreprise ?",
+        options: ["Le SWOT", "Le PESTEL", "Les 4P", "Le questionnaire"],
+        correct: 1,
+        time: 20
+      },
+      {
+        q: "Quel est un avantage distinctif d'Héloïse & Abélard ?",
+        options: ["La production en très grande quantité", "Les prix les plus bas du marché", "La personnalisation et la transformation de bijoux", "La vente exclusivement en grande surface"],
+        correct: 2,
+        time: 30
+      }
+    ];
+
+    // Générateur de QR Code fiable via service public SVG/PNG avec repli visuel propre
+    function QrCodeDisplay({ url }) {
+      const [imgError, setImgError] = useState(false);
+
+      useEffect(() => {
+        setImgError(false);
+      }, [url]);
+
+      const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=6&data=${encodeURIComponent(url)}`;
+
+      return (
+        <div className="qr-wrap">
+          {!imgError ? (
+            <img
+              src={qrSrc}
+              alt="QR Code de connexion au quiz"
+              width={200}
+              height={200}
+              style={{ display: "block", borderRadius: "8px" }}
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <div style={{ width: 200, height: 200, color: "#0f172a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 12 }}>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>QR indisponible hors ligne</div>
+              <div style={{ fontSize: 12, wordBreak: "break-all" }}>{url}</div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function generatePin() {
+      return String(Math.floor(1000 + Math.random() * 9000));
+    }
+
+    function storageKey(pin) {
+      return `quiz_ha_session_${pin}`;
+    }
+
+    function App() {
+      const params = new URLSearchParams(window.location.search);
+      const initialPin = params.get("pin") || "";
+      const initialRole = params.get("role") === "player" && initialPin ? "player" : "host";
+
+      const [role, setRole] = useState(initialRole);
+      const [pin, setPin] = useState(initialPin || generatePin());
+      const [session, setSession] = useState(null);
+      const [playerName, setPlayerName] = useState("");
+      const [playerId, setPlayerId] = useState(() => sessionStorage.getItem("quiz_ha_player_id") || "");
+      const [selectedOption, setSelectedOption] = useState(null);
+      const [questionStartTime, setQuestionStartTime] = useState(null);
+      const [now, setNow] = useState(Date.now());
+
+      const baseUrl = useMemo(() => {
+        const clean = window.location.href.split("?")[0];
+        return clean.startsWith("http") ? clean : "https://exemple.github.io/quiz-heloise-abelard/";
+      }, []);
+
+      const joinUrl = `${baseUrl}?pin=${encodeURIComponent(pin)}&role=player`;
+
+      // Charger et synchroniser l'état de la session
+      useEffect(() => {
+        const readSession = () => {
+          try {
+            const raw = localStorage.getItem(storageKey(pin));
+            if (raw) {
+              setSession(JSON.parse(raw));
+            } else if (role === "host") {
+              const fresh = {
+                pin,
+                status: "lobby", // lobby | question | revealed | finished
+                qIndex: 0,
+                qStartedAt: null,
+                players: {}
+              };
+              localStorage.setItem(storageKey(pin), JSON.stringify(fresh));
+              setSession(fresh);
+            } else {
+              setSession(null);
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        };
+
+        readSession();
+
+        const channel = new BroadcastChannel(`quiz_ha_${pin}`);
+        channel.onmessage = (event) => {
+          if (event.data && event.data.type === "STATE_UPDATE") {
+            setSession(event.data.session);
+          }
+        };
+
+        const onStorage = (e) => {
+          if (e.key === storageKey(pin) && e.newValue) {
+            setSession(JSON.parse(e.newValue));
+          }
+        };
+        window.addEventListener("storage", onStorage);
+
+        return () => {
+          channel.close();
+          window.removeEventListener("storage", onStorage);
+        };
+      }, [pin, role]);
+
+      // Minuteur visuel
+      useEffect(() => {
+        const interval = setInterval(() => setNow(Date.now()), 250);
+        return () => clearInterval(interval);
+      }, []);
+
+      // Réinitialiser la sélection locale quand la question change
+      useEffect(() => {
+        setSelectedOption(null);
+        if (session && session.status === "question") {
+          setQuestionStartTime(session.qStartedAt || Date.now());
+        }
+      }, [session?.qIndex, session?.status, session?.qStartedAt]);
+
+      const publishSession = (nextSession) => {
+        localStorage.setItem(storageKey(nextSession.pin), JSON.stringify(nextSession));
+        setSession(nextSession);
+        try {
+          const channel = new BroadcastChannel(`quiz_ha_${nextSession.pin}`);
+          channel.postMessage({ type: "STATE_UPDATE", session: nextSession });
+          channel.close();
+        } catch (e) {
+          console.error(e);
+        }
+      };
+
+      const createNewSession = () => {
+        const nextPin = generatePin();
+        const fresh = {
+          pin: nextPin,
+          status: "lobby",
+          qIndex: 0,
+          qStartedAt: null,
+          players: {}
+        };
+        setPin(nextPin);
+        publishSession(fresh);
+      };
+
+      const startQuestion = (index) => {
+        if (!session) return;
+        publishSession({
+          ...session,
+          status: "question",
+          qIndex: index,
+          qStartedAt: Date.now()
+        });
+      };
+
+      const revealAnswer = () => {
+        if (!session) return;
+        publishSession({
+          ...session,
+          status: "revealed"
+        });
+      };
+
+      const finishQuiz = () => {
+        if (!session) return;
+        publishSession({
+          ...session,
+          status: "finished"
+        });
+      };
+
+      const handleJoin = (e) => {
+        e.preventDefault();
+        const trimmed = playerName.trim();
+        if (!trimmed || !pin.trim()) return;
+
+        const cleanPin = pin.trim();
+        let current = session;
+        if (!current || current.pin !== cleanPin) {
+          const raw = localStorage.getItem(storageKey(cleanPin));
+          current = raw ? JSON.parse(raw) : {
+            pin: cleanPin,
+            status: "lobby",
+            qIndex: 0,
+            qStartedAt: null,
+            players: {}
+          };
+          setPin(cleanPin);
+        }
+
+        const id = playerId || `p_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        sessionStorage.setItem("quiz_ha_player_id", id);
+        setPlayerId(id);
+
+        const existingPlayer = current.players[id] || {
+          id,
+          name: trimmed,
+          score: 0,
+          correctCount: 0,
+          answers: {}
+        };
+
+        const nextSession = {
+          ...current,
+          pin: cleanPin,
+          players: {
+            ...current.players,
+            [id]: { ...existingPlayer, name: trimmed }
+          }
+        };
+
+        publishSession(nextSession);
+      };
+
+      const handleSubmitAnswer = (optionIndex) => {
+        if (!session || session.status !== "question" || !playerId) return;
+        const player = session.players[playerId];
+        if (!player) return;
+        if (player.answers && player.answers[session.qIndex] !== undefined) return;
+
+        setSelectedOption(optionIndex);
+
+        const q = QUESTIONS[session.qIndex];
+        const elapsedSec = Math.max(0, (Date.now() - (session.qStartedAt || questionStartTime || Date.now())) / 1000);
+        const ratio = Math.max(0, Math.min(1, 1 - elapsedSec / q.time));
+        const isCorrect = optionIndex === q.correct;
+        const pointsEarned = isCorrect ? Math.round(500 + 500 * ratio) : 0;
+
+        const updatedPlayer = {
+          ...player,
+          score: player.score + pointsEarned,
+          correctCount: player.correctCount + (isCorrect ? 1 : 0),
+          answers: {
+            ...player.answers,
+            [session.qIndex]: {
+              option: optionIndex,
+              isCorrect,
+              pointsEarned
+            }
+          }
+        };
+
+        publishSession({
+          ...session,
+          players: {
+            ...session.players,
+            [playerId]: updatedPlayer
+          }
+        });
+      };
+
+      const leaderboard = useMemo(() => {
+        if (!session || !session.players) return [];
+        return Object.values(session.players).sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score;
+          return b.correctCount - a.correctCount;
+        });
+      }, [session]);
+
+      const currentQuestion = session ? QUESTIONS[session.qIndex] || QUESTIONS[0] : QUESTIONS[0];
+      const remainingSeconds = useMemo(() => {
+        if (!session || session.status !== "question" || !session.qStartedAt) return currentQuestion.time;
+        const elapsed = Math.floor((now - session.qStartedAt) / 1000);
+        return Math.max(0, currentQuestion.time - elapsed);
+      }, [session, now, currentQuestion]);
+
+      const currentPlayer = session && playerId ? session.players?.[playerId] : null;
+      const myAnswerForCurrentQ = currentPlayer?.answers?.[session?.qIndex];
+
+      return (
+        <div className="container">
+          <div className="card">
+            <div className="row">
+              <div>
+                <h1 style={{ margin: 0, fontSize: 24 }}>Quiz Héloïse &amp; Abélard</h1>
+                <div className="muted">20 questions • Bonus rapidité • Podium Top 3</div>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  className={`btn ${role === "host" ? "btn-primary" : "btn-secondary"}`}
+                  onClick={() => setRole("host")}
+                >
+                  Mode Prof (Tableau)
+                </button>
+                <button
+                  className={`btn ${role === "player" ? "btn-primary" : "btn-secondary"}`}
+                  onClick={() => setRole("player")}
+                >
+                  Mode Étudiant
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {role === "host" && session && (
+            <>
+              <div className="card">
+                <div className="row" style={{ alignItems: "flex-start" }}>
+                  <div>
+                    <div className="muted">Code PIN de la session</div>
+                    <div className="pin-box" style={{ marginTop: 6 }}>{session.pin}</div>
+                    <div className="muted" style={{ marginTop: 10 }}>
+                      Lien direct : <span style={{ color: "#cbd5e1" }}>{joinUrl}</span>
+                    </div>
+                    <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      <button className="btn btn-secondary" onClick={createNewSession}>
+                        Nouveau code PIN
+                      </button>
+                      {session.status === "lobby" && (
+                        <button className="btn btn-success" onClick={() => startQuestion(0)}>
+                          Lancer la question 1
+                        </button>
+                      )}
+                      {session.status === "question" && (
+                        <button className="btn btn-warning" onClick={revealAnswer}>
+                          Révéler la réponse
+                        </button>
+                      )}
+                      {session.status === "revealed" && session.qIndex + 1 < QUESTIONS.length && (
+                        <button className="btn btn-success" onClick={() => startQuestion(session.qIndex + 1)}>
+                          Question suivante ({session.qIndex + 2}/20)
+                        </button>
+                      )}
+                      {session.status === "revealed" && session.qIndex + 1 >= QUESTIONS.length && (
+                        <button className="btn btn-primary" onClick={finishQuiz}>
+                          Afficher le Podium Top 3
+                        </button>
+                      )}
+                      {session.status !== "lobby" && (
+                        <button className="btn btn-primary" onClick={finishQuiz}>
+                          Terminer &amp; Top 3
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "center" }}>
+                    <QrCodeDisplay url={joinUrl} />
+                    <div className="muted" style={{ marginTop: 6 }}>Scanner pour rejoindre</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card">
+                <div className="row">
+                  <strong>Participants connectés : {leaderboard.length}</strong>
+                  <span className="badge">
+                    {session.status === "lobby" && "En attente dans le lobby"}
+                    {session.status === "question" && `Question ${session.qIndex + 1}/20 • ${remainingSeconds}s`}
+                    {session.status === "revealed" && `Réponse révélée (${session.qIndex + 1}/20)`}
+                    {session.status === "finished" && "Quiz terminé"}
+                  </span>
+                </div>
+
+                {session.status !== "lobby" && session.status !== "finished" && (
+                  <div style={{ marginTop: 18 }}>
+                    <h2 style={{ marginTop: 0, fontSize: 20 }}>
+                      Q{session.qIndex + 1}. {currentQuestion.q}
+                    </h2>
+                    <div className="options-grid">
+                      {currentQuestion.options.map((opt, idx) => {
+                        const isCorrect = idx === currentQuestion.correct;
+                        const cls = session.status === "revealed"
+                          ? (isCorrect ? "option-btn correct" : "option-btn wrong")
+                          : "option-btn";
+                        return (
+                          <div key={idx} className={cls}>
+                            <strong>{String.fromCharCode(65 + idx)}.</strong> {opt}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {session.status === "finished" && (
+                  <div style={{ marginTop: 16 }}>
+                    <h2 style={{ marginTop: 0 }}>Podium Top 3</h2>
+                    <div className="podium">
+                      {[0, 1, 2].map((rank) => {
+                        const p = leaderboard[rank];
+                        const medal = rank === 0 ? "1er" : rank === 1 ? "2e" : "3e";
+                        const rankClass = rank === 0 ? "first" : rank === 1 ? "second" : "third";
+                        return (
+                          <div key={rank} className={`podium-card ${rankClass}`}>
+                            <div style={{ fontSize: 22, fontWeight: 800 }}>{medal}</div>
+                            <div style={{ fontSize: 18, fontWeight: 700, marginTop: 6 }}>
+                              {p ? p.name : "—"}
+                            </div>
+                            <div className="muted" style={{ marginTop: 4 }}>
+                              {p ? `${p.score} pts • ${p.correctCount}/20 bonnes réponses` : "Aucune participation"}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ marginTop: 18 }}>
+                  <strong>Classement en direct</strong>
+                  {leaderboard.length === 0 ? (
+                    <div className="muted" style={{ marginTop: 8 }}>
+                      Aucun étudiant connecté pour le moment. Ils peuvent scanner le QR code ou entrer le PIN {session.pin}.
+                    </div>
+                  ) : (
+                    leaderboard.map((p, idx) => (
+                      <div key={p.id} className="leaderboard-item">
+                        <span><strong>#{idx + 1}</strong> {p.name} <span className="muted">({p.correctCount} justes)</span></span>
+                        <strong>{p.score} pts</strong>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {role === "player" && (
+            <div className="card">
+              {!currentPlayer ? (
+                <form onSubmit={handleJoin}>
+                  <h2 style={{ marginTop: 0 }}>Rejoindre la session</h2>
+                  <div style={{ marginBottom: 12 }}>
+                    <label className="muted">Code PIN</label>
+                    <input
+                      type="text"
+                      value={pin}
+                      onChange={(e) => setPin(e.target.value)}
+                      placeholder="Ex: 4829"
+                      style={{ marginTop: 6 }}
+                    />
+                  </div>
+                  <div style={{ marginBottom: 16 }}>
+                    <label className="muted">Ton prénom ou pseudo</label>
+                    <input
+                      type="text"
+                      value={playerName}
+                      onChange={(e) => setPlayerName(e.target.value)}
+                      placeholder="Ex: Léa"
+                      style={{ marginTop: 6 }}
+                    />
+                  </div>
+                  <button type="submit" className="btn btn-success" style={{ width: "100%" }}>
+                    Rejoindre le quiz
+                  </button>
+                </form>
+              ) : (
+                <div>
+                  <div className="row" style={{ marginBottom: 16 }}>
+                    <div>
+                      <strong>{currentPlayer.name}</strong> <span className="muted">(PIN {pin})</span>
+                    </div>
+                    <span className="badge">{currentPlayer.score} pts • {currentPlayer.correctCount} justes</span>
+                  </div>
+
+                  {!session && (
+                    <div className="muted">En attente de la session...</div>
+                  )}
+
+                  {session && session.status === "lobby" && (
+                    <div style={{ textAlign: "center", padding: "24px 0" }}>
+                      <h3>Tu es connecté !</h3>
+                      <div className="muted">Regarde le tableau, le professeur va lancer la première question.</div>
+                    </div>
+                  )}
+
+                  {session && (session.status === "question" || session.status === "revealed") && (
+                    <div>
+                      <div className="row" style={{ marginBottom: 10 }}>
+                        <span className="badge">Question {session.qIndex + 1} / 20</span>
+                        {session.status === "question" && (
+                          <span className="badge">{remainingSeconds}s restantes</span>
+                        )}
+                      </div>
+                      <h2 style={{ marginTop: 0, fontSize: 19 }}>{currentQuestion.q}</h2>
+
+                      <div className="options-grid">
+                        {currentQuestion.options.map((opt, idx) => {
+                          const hasAnswered = myAnswerForCurrentQ !== undefined;
+                          const isSelected = (myAnswerForCurrentQ?.option ?? selectedOption) === idx;
+                          const isCorrect = idx === currentQuestion.correct;
+
+                          let cls = "option-btn";
+                          if (session.status === "revealed") {
+                            if (isCorrect) cls += " correct";
+                            else if (isSelected) cls += " wrong";
+                          } else if (isSelected) {
+                            cls += " selected";
+                          }
+
+                          return (
+                            <button
+                              key={idx}
+                              className={cls}
+                              disabled={session.status !== "question" || hasAnswered}
+                              onClick={() => handleSubmitAnswer(idx)}
+                            >
+                              <strong>{String.fromCharCode(65 + idx)}.</strong> {opt}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {myAnswerForCurrentQ && (
+                        <div style={{ marginTop: 14 }} className="muted">
+                          Réponse enregistrée{session.status === "revealed"
+                            ? (myAnswerForCurrentQ.isCorrect
+                              ? ` — Bonne réponse ! (+${myAnswerForCurrentQ.pointsEarned} pts)`
+                              : " — Mauvaise réponse (0 pt)")
+                            : ". Patiente pour la révélation..."}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {session && session.status === "finished" && (
+                    <div style={{ textAlign: "center", padding: "16px 0" }}>
+                      <h2 style={{ marginTop: 0 }}>Quiz terminé !</h2>
+                      <p style={{ fontSize: 18 }}>
+                        Score final : <strong>{currentPlayer.score} points</strong> ({currentPlayer.correctCount}/20 bonnes réponses)
+                      </p>
+                      <div className="muted">Regarde le tableau pour découvrir le Podium Top 3.</div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
